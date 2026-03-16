@@ -1195,8 +1195,9 @@ function getClientId(){return localStorage.getItem(K.googleClientId)||'';}
 function conectarDrive(){
   const clientId=getClientId();
   if(!clientId){toast('Primero guarda tu Google Client ID');return;}
-  // Use current origin so it works on any device
-  const redirect=window.location.origin;
+  // URL completa incluyendo path para GitHub Pages
+  const path=window.location.pathname.replace(/\/+$/,'');
+  const redirect=window.location.origin+(path||'');
   const url=`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirect)}&response_type=token&scope=${encodeURIComponent(DRIVE_SCOPE)}&prompt=consent`;
   window.location.href=url;
 }
