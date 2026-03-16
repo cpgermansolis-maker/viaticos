@@ -1415,7 +1415,7 @@ function buildSessionData(){
       motivo:document.getElementById('motivo').value,
       lugar:document.getElementById('lugar').value,
       fechaSolicitud:document.getElementById('fechaSolicitud').value,
-      noSolicitud:document.getElementById('noSolicitud').value,
+      noSolicitud:document.getElementById('noSolicitud').value || undefined,
       folioSiscor:document.getElementById('folioSiscor').value,
       noServicio:document.getElementById('noServicio').value,
       diasComision:document.getElementById('diasComision').value,
@@ -1480,6 +1480,11 @@ function restoreSessionData(data){
   }
   gastos=data.gastos||[];
   renderGastos();actualizarSaldo();actualizarPolitica();
+  // Siempre garantizar folio
+  setTimeout(()=>{
+    const ns=document.getElementById('noSolicitud');
+    if(ns&&!ns.value) initNoSolicitud();
+  },500);
 }
 function saveSession(){
   try{localStorage.setItem(K.session,JSON.stringify(buildSessionData()));updateSavedIndicator();}catch{}
