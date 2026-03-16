@@ -1420,6 +1420,15 @@ function buildSessionData(){
       firmaContable:document.getElementById('firmaContable').value,
       firmaAdmin:document.getElementById('firmaAdmin').value,
       observaciones:document.getElementById('observaciones').value,
+      // ── Formulario de captura ──
+      gFecha:document.getElementById('gFecha').value,
+      gImporte:document.getElementById('gImporte').value,
+      gConcepto:document.getElementById('gConcepto').value,
+      gJustificacion:document.getElementById('gJustificacion').value,
+      gFactura:document.getElementById('gFactura').value,
+      gRFC:document.getElementById('gRFC').value,
+      gFechaFin:document.getElementById('gFechaFin').value,
+      tipoActivo:tipoActivo,
     },
     gastos:gastos.map(g=>({
       ...g,
@@ -1433,7 +1442,15 @@ function buildSessionData(){
 function restoreSessionData(data){
   if(!data)return;
   const c=data.campos||{};
-  Object.keys(c).forEach(id=>{const el=document.getElementById(id);if(el)el.value=c[id]||'';});
+  Object.keys(c).forEach(id=>{
+    if(id==='tipoActivo') return; // manejar aparte
+    const el=document.getElementById(id);
+    if(el)el.value=c[id]||'';
+  });
+  // Restaurar tipo activo
+  if(c.tipoActivo) setTipo(c.tipoActivo);
+  // Restaurar rango si hay fechaFin
+  if(c.gFechaFin && !rangoActivo) toggleRango();
   gastos=data.gastos||[];
   renderGastos();actualizarSaldo();actualizarPolitica();
 }
@@ -2513,9 +2530,11 @@ initPendientes();
 // Auto-save on field changes
 ['nombre','puesto','empresa','motivo','lugar','fechaSolicitud','folioSiscor','noServicio',
  'diasComision','firmaElabora','firmaAux','firmaContable','firmaAdmin','observaciones',
- 'importeEntregado'
+ 'importeEntregado',
+ 'gFecha','gImporte','gConcepto','gJustificacion','gFactura','gRFC'
 ].forEach(id=>{
   const el=document.getElementById(id);
+  if(el)el.addEventListener('input',()=>{saveSession();});
   if(el)el.addEventListener('change',()=>{saveSession();syncDrive('auto');});
 });
 
