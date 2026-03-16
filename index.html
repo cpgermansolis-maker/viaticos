@@ -2562,6 +2562,12 @@ initSettingsStatus();
 initPaste();
 initPendientes();
 
+// Garantizar que noSolicitud siempre tenga valor
+setTimeout(()=>{
+  const ns = document.getElementById('noSolicitud');
+  if(ns && !ns.value) initNoSolicitud();
+}, 2000); // Esperar a que Drive cargue la sesión primero
+
 // Auto-save on field changes
 ['nombre','puesto','empresa','motivo','lugar','fechaSolicitud','folioSiscor','noServicio',
  'diasComision','firmaElabora','firmaAux','firmaContable','firmaAdmin','observaciones',
