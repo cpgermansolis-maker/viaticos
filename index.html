@@ -1995,7 +1995,7 @@ function leerXmlCfdiTexto(xml) {
     const gImporte = document.getElementById('gImporte');
     if (gFactura && folio && !gFactura.value) gFactura.value = folio;
     if (gRFC && rfcEmisor && !gRFC.value) gRFC.value = rfcEmisor;
-    if (gConcepto && nombreEmisor && !gConcepto.value) gConcepto.value = nombreEmisor;
+    if (gConcepto && nombreEmisor) gConcepto.value = nombreEmisor;
     if (gImporte && total && !gImporte.value) gImporte.value = parseFloat(total).toFixed(2);
 
     // Aplicar a Facturar
