@@ -1436,6 +1436,13 @@ function buildSessionData(){
       gFechaFin:document.getElementById('gFechaFin').value,
       tipoActivo:tipoActivo,
     },
+    // ── Tickets pendientes ──
+    pendientes: pendientes.map(p=>({
+      id:p.id, fecha:p.fecha, nombre:p.nombre,
+      ai:p.ai, subido:p.subido,
+      // Incluir imagen comprimida (ya está a ~300KB)
+      data:p.data, type:p.type
+    })),
     gastos:gastos.map(g=>({
       ...g,
       archivos:g.archivos.map(a=>({
@@ -1449,14 +1456,28 @@ function restoreSessionData(data){
   if(!data)return;
   const c=data.campos||{};
   Object.keys(c).forEach(id=>{
-    if(id==='tipoActivo') return; // manejar aparte
+    if(id==='tipoActivo') return;
     const el=document.getElementById(id);
     if(el)el.value=c[id]||'';
   });
-  // Restaurar tipo activo
   if(c.tipoActivo) setTipo(c.tipoActivo);
-  // Restaurar rango si hay fechaFin
   if(c.gFechaFin && !rangoActivo) toggleRango();
+  // Restaurar pendientes — merge con los locales (más recientes ganan)
+  if(data.pendientes && data.pendientes.length > 0){
+    const localIds = new Set(pendientes.map(p=>p.id));
+    const driveIds = new Set(data.pendientes.map(p=>p.id));
+    // Agregar los de Drive que no están en local
+    data.pendientes.forEach(p=>{
+      if(!localIds.has(p.id)) pendientes.push(p);
+    });
+    // Quitar los que ya no están en Drive (fueron procesados en otro dispositivo)
+    // Solo si Drive tiene datos más recientes
+    if(data.ts > (JSON.parse(localStorage.getItem(K.session)||'{}').ts||0)){
+      pendientes = pendientes.filter(p => driveIds.has(p.id) || !data.pendientes.length);
+    }
+    savePendientes();
+    updateFabBadge();
+  }
   gastos=data.gastos||[];
   renderGastos();actualizarSaldo();actualizarPolitica();
 }
@@ -2277,8 +2298,10 @@ async function onFabCapture(input) {
     toast('📷 Ticket guardado · procesando…');
     // Leer con IA en segundo plano
     leerTicketPendiente(ticket);
-    // Subir a Drive en segundo plano
+    // Subir a Drive (imagen individual + sincronizar sesión)
     subirTicketDrive(ticket);
+    saveSession();
+    syncDrive('auto');
     // Actualizar lista si estamos en Pendientes
     if (document.getElementById('screen-pendientes')?.classList.contains('active')) {
       renderPendientes();
