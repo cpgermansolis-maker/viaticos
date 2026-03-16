@@ -1971,27 +1971,24 @@ async function renderCfdiPDF(b64, container, loader, datos) {
 
 function leerXmlCfdiTexto(xml) {
   try {
-    const emisorIdx = xml.search(/<[^>]*Emisor[^>]*Rfc=/i);
-    const emisorTag = emisorIdx >= 0 ? xml.slice(emisorIdx, xml.indexOf('>', emisorIdx) + 1) : '';
-    const rfcEmisor = emisorTag.match(/Rfc="([^"]+)"/i)?.[1] || null;
-    const nombreEmisor = emisorTag.match(/Nombre="([^"]+)"/i)?.[1] || null;
-    const head = xml.slice(0, 5000);
-    const serie = head.match(/Serie="([^"]+)"/i)?.[1] || '';
-    const folioAttr = head.match(/Folio="([^"]+)"/i)?.[1] || '';
-    const total = head.match(/Total="([^"]+)"/i)?.[1] || '';
+    // Buscar Folio y Serie en los primeros 500 chars (nodo Comprobante raíz)
+    const top = xml.slice(0, 500);
+    const serie = top.match(/Serie="([^"]+)"/i)?.[1] || '';
+    const folioAttr = top.match(/Folio="([^"]+)"/i)?.[1] || '';
     const folio = folioAttr ? (serie ? serie + '-' + folioAttr : folioAttr) : null;
 
-    // Intentar llenar campos de Facturar (pestaña Facturar)
-    const fFolio = document.getElementById('fFolioFact');
-    const fRfc = document.getElementById('fRfcEmisor');
-    const fNegocio = document.getElementById('fNegocio');
-    const fMonto = document.getElementById('fMonto');
-    if (fFolio && folio) fFolio.value = folio;
-    if (fRfc && rfcEmisor) fRfc.value = rfcEmisor;
-    if (fNegocio && nombreEmisor && !fNegocio.value) fNegocio.value = nombreEmisor;
-    if (fMonto && total && !fMonto.value) fMonto.value = parseFloat(total).toFixed(2);
+    // Total en los primeros 4000 chars
+    const mid = xml.slice(0, 4000);
+    const total = mid.match(/\bTotal="([^"]+)"/i)?.[1] || '';
 
-    // Intentar llenar campos de Gastos (pestaña Gastos)
+    // Emisor — buscar el tag cfdi:Emisor específicamente
+    const emisorIdx = xml.search(/<[^>]*Emisor[^>]*Rfc=/i);
+    const emisorEnd = emisorIdx >= 0 ? xml.indexOf('>', emisorIdx) + 1 : -1;
+    const emisorTag = emisorIdx >= 0 ? xml.slice(emisorIdx, emisorEnd) : '';
+    const rfcEmisor = emisorTag.match(/Rfc="([^"]+)"/i)?.[1] || null;
+    const nombreEmisor = emisorTag.match(/Nombre="([^"]+)"/i)?.[1] || null;
+
+    // Aplicar a Gastos
     const gFactura = document.getElementById('gFactura');
     const gRFC = document.getElementById('gRFC');
     const gConcepto = document.getElementById('gConcepto');
@@ -2001,9 +1998,17 @@ function leerXmlCfdiTexto(xml) {
     if (gConcepto && nombreEmisor && !gConcepto.value) gConcepto.value = nombreEmisor;
     if (gImporte && total && !gImporte.value) gImporte.value = parseFloat(total).toFixed(2);
 
-    toast(`✓ XML: ${nombreEmisor||'?'} · ${rfcEmisor||'?'} · ${folio||'?'}`);
+    // Aplicar a Facturar
+    const fFolio = document.getElementById('fFolioFact');
+    const fRfc = document.getElementById('fRfcEmisor');
+    const fNegocio = document.getElementById('fNegocio');
+    const fMonto = document.getElementById('fMonto');
+    if (fFolio && folio) fFolio.value = folio;
+    if (fRfc && rfcEmisor) fRfc.value = rfcEmisor;
+    if (fNegocio && nombreEmisor && !fNegocio.value) fNegocio.value = nombreEmisor;
+    if (fMonto && total && !fMonto.value) fMonto.value = parseFloat(total).toFixed(2);
 
-    // Mostrar datos en Facturar si estamos ahí
+    toast(`✓ XML: ${nombreEmisor||'?'} · ${rfcEmisor||'?'} · ${folio||'?'}`);
     if (document.getElementById('screen-facturar')?.classList.contains('active')) {
       mostrarDatosCard();
     }
