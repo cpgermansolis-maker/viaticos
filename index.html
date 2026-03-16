@@ -298,6 +298,47 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
   #content{max-width:640px;margin:0 auto;}
   #nav{max-width:640px;left:50%;transform:translateX(-50%);}
 }
+
+  /* ── BOTÓN FLOTANTE CÁMARA ── */
+  #fabCamera{
+    position:fixed;bottom:calc(var(--nav-h) + 16px);right:16px;
+    width:52px;height:52px;border-radius:50%;
+    background:var(--blue);color:#fff;
+    border:none;font-size:24px;cursor:pointer;
+    box-shadow:0 4px 16px rgba(30,95,173,0.4);
+    display:flex;align-items:center;justify-content:center;
+    z-index:150;transition:transform 0.15s,box-shadow 0.15s;
+  }
+  #fabCamera:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(30,95,173,0.5);}
+  #fabCamera:active{transform:scale(0.95);}
+  .fab-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);
+    color:#fff;font-size:9px;font-family:var(--mono);font-weight:600;
+    padding:2px 5px;border-radius:8px;min-width:16px;text-align:center;}
+
+  /* ── TICKET PENDIENTE ── */
+  .ticket-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);
+    box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden;}
+  .ticket-img{width:100%;max-height:180px;object-fit:cover;display:block;cursor:pointer;}
+  .ticket-body{padding:10px 12px;}
+  .ticket-meta{font-size:10px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;}
+  .ticket-ai{background:#EEF4FF;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px;}
+  .ticket-ai-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .ticket-ai-row:last-child{margin-bottom:0;}
+  .ticket-ai-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;}
+  .ticket-ai-val{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text);}
+  .ticket-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .ticket-btn{padding:8px 4px;border-radius:var(--r2);border:none;font-family:var(--mono);
+    font-size:10px;font-weight:500;cursor:pointer;text-align:center;transition:all 0.15s;}
+  .ticket-btn.fact{background:#EEF4FF;color:var(--blue);}
+  .ticket-btn.fact:hover{background:var(--blue);color:#fff;}
+  .ticket-btn.gasto{background:#E8F5EE;color:var(--success);}
+  .ticket-btn.gasto:hover{background:var(--success);color:#fff;}
+  .ticket-btn.del{background:#FAE0D8;color:var(--danger);}
+  .ticket-btn.del:hover{background:var(--danger);color:#fff;}
+  .empty-pending{text-align:center;padding:40px 16px;color:var(--text3);}
+  .upload-progress{height:3px;background:var(--blue);border-radius:2px;
+    transition:width 0.3s;margin-top:6px;}
+
 </style>
 </head>
 <body>
@@ -660,6 +701,25 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
 
     </div>
 
+  
+    <!-- SCREEN: PENDIENTES -->
+    <div id="screen-pendientes" class="screen">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">Tickets pendientes</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:2px;">Fotos en espera de ser procesadas</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="sincronizarPendientes()">↺ Sincronizar</button>
+      </div>
+      <div id="pendientesList">
+        <div class="empty-pending">
+          <div style="font-size:40px;margin-bottom:12px;">📥</div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Sin tickets pendientes</div>
+          <div style="font-size:11px;">Usa el botón 📷 azul para capturar tickets rápido desde cualquier pantalla</div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 
   <!-- NAV -->
@@ -676,10 +736,21 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
     <button class="nav-tab" id="nav-facturar" onclick="showScreen('facturar')">
       <span class="nav-icon">🧾</span><span class="nav-label">Facturar</span>
     </button>
+    <button class="nav-tab" id="nav-pendientes" onclick="showScreen('pendientes')">
+      <span class="nav-icon">📥</span><span class="nav-label">Pendientes</span>
+    </button>
     <button class="nav-tab" id="nav-ajustes" onclick="showScreen('ajustes')">
       <span class="nav-icon">⚙️</span><span class="nav-label">Ajustes</span>
     </button>
   </div>
+
+
+<!-- BOTÓN FLOTANTE CÁMARA RÁPIDA -->
+<button id="fabCamera" onclick="document.getElementById('fabInput').click()" title="Capturar ticket rápido">
+  📷
+  <span class="fab-badge" id="fabBadge" style="display:none">0</span>
+</button>
+<input type="file" id="fabInput" accept="image/*" capture="environment" onchange="onFabCapture(this)" style="display:none">
 
 </div><!-- /app -->
 
@@ -738,6 +809,7 @@ function showScreen(id){
   document.getElementById('screen-'+id).classList.add('active');
   document.getElementById('nav-'+id).classList.add('active');
   document.getElementById('content').scrollTop=0;
+  if(id==='pendientes') renderPendientes();
 }
 
 // ── TIPO ──
@@ -2126,6 +2198,267 @@ function limpiarFacturador() {
   document.getElementById('fCfdiFile').value = '';
 }
 
+// ── MÓDULO PENDIENTES ──
+const PENDING_FOLDER = 'FTAD02_Tickets_Pendientes';
+const PENDING_KEY = 'ftad02_pendientes';
+let pendientes = []; // {id, data, type, fecha, nombre, ai:{negocio,monto,fecha}}
+
+function getPendientes() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch { return []; }
+}
+function savePendientes() {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendientes)); } catch {}
+}
+function updateFabBadge() {
+  const badge = document.getElementById('fabBadge');
+  if (!badge) return;
+  const n = pendientes.length;
+  badge.style.display = n > 0 ? '' : 'none';
+  badge.textContent = n;
+  // Also update nav tab
+  const navTab = document.getElementById('nav-pendientes');
+  if (navTab) {
+    const label = navTab.querySelector('.nav-label');
+    if (label) label.textContent = n > 0 ? `Pendientes (${n})` : 'Pendientes';
+  }
+}
+
+// Captura rápida desde el FAB
+async function onFabCapture(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    // Comprimir imagen antes de guardar
+    const compressed = await comprimirImagen(e.target.result, 800, 0.75);
+    const ticket = {
+      id: Date.now(),
+      data: compressed,
+      type: 'image/jpeg',
+      fecha: new Date().toISOString(),
+      nombre: file.name,
+      ai: null,
+      subido: false
+    };
+    pendientes.push(ticket);
+    savePendientes();
+    updateFabBadge();
+    toast('📷 Ticket guardado · procesando…');
+    // Leer con IA en segundo plano
+    leerTicketPendiente(ticket);
+    // Subir a Drive en segundo plano
+    subirTicketDrive(ticket);
+    // Actualizar lista si estamos en Pendientes
+    if (document.getElementById('screen-pendientes')?.classList.contains('active')) {
+      renderPendientes();
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// Comprimir imagen
+function comprimirImagen(dataUrl, maxSize, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// Leer ticket con IA
+async function leerTicketPendiente(ticket) {
+  const apiKey = localStorage.getItem(K.anthropicKey) || '';
+  if (!apiKey) return;
+  try {
+    const b64 = ticket.data.split(',')[1];
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 150,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+          { type: 'text', text: 'Analiza este ticket. Responde SOLO JSON:\n{"negocio":"OXXO","fecha":"2026-03-02","monto":"85.00","folio":"12345"}\n- negocio: nombre en MAYÚSCULAS. null si no se ve.\n- fecha: YYYY-MM-DD. null si no se ve.\n- monto: total final sin $ ni comas. null si no se ve.\n- folio: número de ticket. null si no existe.' }
+        ]}]
+      })
+    });
+    const d = await res.json();
+    if (d.error) return;
+    const txt = d.content?.[0]?.text?.trim() || '{}';
+    let r = { negocio: null, fecha: null, monto: null, folio: null };
+    try { const m = txt.match(/\{[\s\S]*\}/); r = { ...r, ...JSON.parse(m ? m[0] : txt) }; } catch {}
+    // Update ticket
+    const idx = pendientes.findIndex(p => p.id === ticket.id);
+    if (idx >= 0) {
+      pendientes[idx].ai = r;
+      savePendientes();
+      if (document.getElementById('screen-pendientes')?.classList.contains('active')) {
+        renderPendientes();
+      }
+      updateFabBadge();
+    }
+  } catch {}
+}
+
+// Subir ticket a Drive
+async function subirTicketDrive(ticket) {
+  if (!driveToken || !driveFolderId) return;
+  try {
+    // Buscar o crear subcarpeta de pendientes
+    let pendFolderId = localStorage.getItem('ftad02_pending_folder') || '';
+    if (!pendFolderId) {
+      const r = await gdriveReq('GET', `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${PENDING_FOLDER}' and '${driveFolderId}' in parents and trashed=false`)}&fields=files(id)`);
+      if (r?.files?.length > 0) {
+        pendFolderId = r.files[0].id;
+      } else {
+        const cr = await gdriveReq('POST', 'https://www.googleapis.com/drive/v3/files', { name: PENDING_FOLDER, mimeType: 'application/vnd.google-apps.folder', parents: [driveFolderId] });
+        pendFolderId = cr?.id || '';
+      }
+      if (pendFolderId) localStorage.setItem('ftad02_pending_folder', pendFolderId);
+    }
+    if (!pendFolderId) return;
+    // Upload image
+    const b64 = ticket.data.split(',')[1];
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: 'image/jpeg' });
+    const meta = { name: `ticket_${ticket.id}.jpg`, parents: [pendFolderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', blob);
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + driveToken }, body: form
+    });
+    const idx = pendientes.findIndex(p => p.id === ticket.id);
+    if (idx >= 0) { pendientes[idx].subido = true; savePendientes(); }
+  } catch {}
+}
+
+// Sincronizar pendientes desde Drive
+async function sincronizarPendientes() {
+  if (!driveToken) { toast('Conecta Drive primero'); return; }
+  toast('Sincronizando pendientes…');
+  // Re-subir los que no se subieron
+  for (const t of pendientes.filter(p => !p.subido)) {
+    await subirTicketDrive(t);
+  }
+  renderPendientes();
+  toast('Sincronización completa ✓');
+}
+
+// Render lista de pendientes
+function renderPendientes() {
+  const lista = document.getElementById('pendientesList');
+  if (!pendientes.length) {
+    lista.innerHTML = `<div class="empty-pending">
+      <div style="font-size:40px;margin-bottom:12px;">📥</div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Sin tickets pendientes</div>
+      <div style="font-size:11px;">Usa el botón 📷 azul para capturar tickets rápido desde cualquier pantalla</div>
+    </div>`;
+    return;
+  }
+  lista.innerHTML = pendientes.map(t => {
+    const ai = t.ai;
+    const fechaCaptura = new Date(t.fecha).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `
+    <div class="ticket-card" id="tc-${t.id}">
+      <img class="ticket-img" src="${t.data}" onclick="verImg('${t.data}')" alt="Ticket">
+      <div class="ticket-body">
+        <div class="ticket-meta">
+          📅 ${fechaCaptura} 
+          ${t.subido ? '· ☁️ en Drive' : '· ⏳ pendiente de subir'}
+          ${!ai ? '· <span class="spin" style="font-size:10px">⟳</span> leyendo…' : ''}
+        </div>
+        ${ai ? `<div class="ticket-ai">
+          ${ai.negocio ? `<div class="ticket-ai-row"><span class="ticket-ai-lbl">Negocio</span><span class="ticket-ai-val">${ai.negocio}</span></div>` : ''}
+          ${ai.monto ? `<div class="ticket-ai-row"><span class="ticket-ai-lbl">Monto</span><span class="ticket-ai-val">$${ai.monto}</span></div>` : ''}
+          ${ai.fecha ? `<div class="ticket-ai-row"><span class="ticket-ai-lbl">Fecha</span><span class="ticket-ai-val">${fFecha(ai.fecha)}</span></div>` : ''}
+          ${ai.folio ? `<div class="ticket-ai-row"><span class="ticket-ai-lbl">Folio</span><span class="ticket-ai-val">${ai.folio}</span></div>` : ''}
+        </div>` : ''}
+        <div class="ticket-actions">
+          <button class="ticket-btn fact" onclick="pendienteAFacturar(${t.id})">🧾 Facturar</button>
+          <button class="ticket-btn gasto" onclick="pendienteAGasto(${t.id})">💳 A Gastos</button>
+          <button class="ticket-btn del" onclick="eliminarPendiente(${t.id})">🗑 Descartar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pendienteAFacturar(id) {
+  const t = pendientes.find(p => p.id === id);
+  if (!t) return;
+  showScreen('facturar');
+  // Poner imagen en preview de facturar
+  fTicketData = { name: 'ticket.jpg', type: 'image/jpeg', data: t.data, isPDFRendered: false };
+  const prev = document.getElementById('fTicketPreview');
+  prev.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = t.data;
+  img.style.cssText = 'width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1.5px solid var(--border);';
+  prev.appendChild(img);
+  // Prellenar con datos de IA
+  if (t.ai) {
+    if (t.ai.negocio) document.getElementById('fNegocio').value = t.ai.negocio;
+    if (t.ai.fecha) document.getElementById('fFecha').value = t.ai.fecha;
+    if (t.ai.monto) document.getElementById('fMonto').value = t.ai.monto;
+    if (t.ai.folio) document.getElementById('fTicketNum').value = t.ai.folio;
+    detectarPortal(t.ai.negocio || '');
+  }
+  mostrarDatosCard();
+  // Marcar para eliminar después de procesar
+  document.getElementById('fBtnPortal').dataset.pendienteId = id;
+  toast('Ticket cargado en Facturar ✓');
+}
+
+function pendienteAGasto(id) {
+  const t = pendientes.find(p => p.id === id);
+  if (!t) return;
+  showScreen('gastos');
+  setTipo('sin');
+  // Prellenar con datos de IA
+  if (t.ai) {
+    if (t.ai.fecha) document.getElementById('gFecha').value = t.ai.fecha;
+    if (t.ai.monto) document.getElementById('gImporte').value = t.ai.monto;
+    if (t.ai.negocio) document.getElementById('gConcepto').value = t.ai.negocio;
+  }
+  // Adjuntar imagen al gasto
+  archivosGasto = [{ name: 'ticket.jpg', type: 'image/jpeg', data: t.data, isPDFRendered: false }];
+  const preview = document.getElementById('filePreview');
+  preview.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'file-thumb-wrap';
+  const img = document.createElement('img'); img.src = t.data; img.className = 'file-thumb';
+  img.onclick = () => verImg(t.data); wrap.appendChild(img);
+  const del = document.createElement('button'); del.className = 'ft-del'; del.innerHTML = '✕';
+  del.onclick = () => { archivosGasto = []; wrap.remove(); };
+  wrap.appendChild(del); preview.appendChild(wrap);
+  // Eliminar de pendientes
+  eliminarPendiente(id);
+  toast('Ticket pasado a Gastos ✓');
+}
+
+function eliminarPendiente(id) {
+  pendientes = pendientes.filter(p => p.id !== id);
+  savePendientes();
+  updateFabBadge();
+  renderPendientes();
+}
+
+function initPendientes() {
+  pendientes = getPendientes();
+  updateFabBadge();
+}
+
 // ── INIT ──
 // Check OAuth callback first
 checkOAuthCallback();
@@ -2171,6 +2504,7 @@ driveFileId=localStorage.getItem(K.driveFileId)||'';
 setTipo('sin');
 initSettingsStatus();
 initPaste();
+initPendientes();
 
 // Auto-save on field changes
 ['nombre','puesto','empresa','motivo','lugar','fechaSolicitud','folioSiscor','noServicio','diasComision','firmaElabora','firmaAux','firmaContable','firmaAdmin','observaciones'].forEach(id=>{
