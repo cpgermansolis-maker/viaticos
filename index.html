@@ -2416,8 +2416,8 @@ function pendienteAFacturar(id) {
     detectarPortal(t.ai.negocio || '');
   }
   mostrarDatosCard();
-  // Marcar para eliminar después de procesar
-  document.getElementById('fBtnPortal').dataset.pendienteId = id;
+  // Eliminar de pendientes al pasar a Facturar
+  eliminarPendiente(id);
   toast('Ticket cargado en Facturar ✓');
 }
 
