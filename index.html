@@ -810,6 +810,7 @@ function showScreen(id){
   document.getElementById('nav-'+id).classList.add('active');
   document.getElementById('content').scrollTop=0;
   if(id==='pendientes') renderPendientes();
+  if(id==='facturar') restoreFacturarState();
 }
 
 // ── TIPO ──
@@ -2178,6 +2179,7 @@ function pasarAGastos() {
 
 function limpiarFacturador() {
   fTicketData = null; fCfdiData = null; fPortalActual = null;
+  localStorage.removeItem('ftad02_facturar_state');
   document.getElementById('fTicketPreview').innerHTML = '';
   document.getElementById('fAiArea').innerHTML = '';
   document.getElementById('fNegocio').value = '';
@@ -2398,8 +2400,11 @@ function renderPendientes() {
 function pendienteAFacturar(id) {
   const t = pendientes.find(p => p.id === id);
   if (!t) return;
+  // Limpiar estado anterior de Facturar para que no sobreescriba
+  localStorage.removeItem('ftad02_facturar_state');
+  limpiarFacturador();
   showScreen('facturar');
-  // Poner imagen en preview de facturar
+  // Poner imagen en preview
   fTicketData = { name: 'ticket.jpg', type: 'image/jpeg', data: t.data, isPDFRendered: false };
   const prev = document.getElementById('fTicketPreview');
   prev.innerHTML = '';
@@ -2407,7 +2412,7 @@ function pendienteAFacturar(id) {
   img.src = t.data;
   img.style.cssText = 'width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1.5px solid var(--border);';
   prev.appendChild(img);
-  // Prellenar con datos de IA
+  // Prellenar con datos de IA DESPUÉS del showScreen
   if (t.ai) {
     if (t.ai.negocio) document.getElementById('fNegocio').value = t.ai.negocio;
     if (t.ai.fecha) document.getElementById('fFecha').value = t.ai.fecha;
@@ -2416,7 +2421,6 @@ function pendienteAFacturar(id) {
     detectarPortal(t.ai.negocio || '');
   }
   mostrarDatosCard();
-  // Eliminar de pendientes al pasar a Facturar
   eliminarPendiente(id);
   toast('Ticket cargado en Facturar ✓');
 }
@@ -2507,10 +2511,50 @@ initPaste();
 initPendientes();
 
 // Auto-save on field changes
-['nombre','puesto','empresa','motivo','lugar','fechaSolicitud','folioSiscor','noServicio','diasComision','firmaElabora','firmaAux','firmaContable','firmaAdmin','observaciones'].forEach(id=>{
+['nombre','puesto','empresa','motivo','lugar','fechaSolicitud','folioSiscor','noServicio',
+ 'diasComision','firmaElabora','firmaAux','firmaContable','firmaAdmin','observaciones',
+ 'importeEntregado'
+].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener('change',()=>{saveSession();syncDrive('auto');});
 });
+
+// Auto-save Facturar fields
+['fNegocio','fFecha','fMonto','fTicketNum','fFolioFact','fRfcEmisor'
+].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('input',()=>{
+    const fData={
+      negocio:document.getElementById('fNegocio').value,
+      fecha:document.getElementById('fFecha').value,
+      monto:document.getElementById('fMonto').value,
+      folio:document.getElementById('fTicketNum').value,
+      folioFact:document.getElementById('fFolioFact').value,
+      rfc:document.getElementById('fRfcEmisor').value
+    };
+    localStorage.setItem('ftad02_facturar_state', JSON.stringify(fData));
+  });
+});
+
+// Restore Facturar state
+function restoreFacturarState(){
+  try{
+    const raw=localStorage.getItem('ftad02_facturar_state');
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d.negocio) document.getElementById('fNegocio').value=d.negocio;
+    if(d.fecha) document.getElementById('fFecha').value=d.fecha;
+    if(d.monto) document.getElementById('fMonto').value=d.monto;
+    if(d.folio) document.getElementById('fTicketNum').value=d.folio;
+    if(d.folioFact) document.getElementById('fFolioFact').value=d.folioFact;
+    if(d.rfc) document.getElementById('fRfcEmisor').value=d.rfc;
+    // Mostrar cards si hay datos
+    if(d.negocio||d.monto||d.folioFact){
+      mostrarDatosCard();
+      if(d.negocio) detectarPortal(d.negocio);
+    }
+  }catch{}
+}
 </script>
 </body>
 </html>
