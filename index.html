@@ -1483,12 +1483,18 @@ function saveAnthropicKey(){
   toast('API Key guardada ✓');
 }
 function saveGoogleClientId(){
-  const val=document.getElementById('googleClientId').value.trim();
+  const raw=document.getElementById('googleClientId').value;
+  // Limpiar espacios, saltos de línea y caracteres invisibles
+  const val=raw.replace(/\s+/g,'').trim();
   if(!val){toast('Pega tu Client ID primero');return;}
+  if(!val.includes('.apps.googleusercontent.com')){
+    toast('⚠ Client ID inválido — debe terminar en .apps.googleusercontent.com');
+    return;
+  }
   localStorage.setItem(K.googleClientId,val);
   document.getElementById('googleClientId').value='';
-  document.getElementById('googleClientId').placeholder=val.slice(0,20)+'...';
-  document.getElementById('driveClientStatus').textContent='✓ Client ID guardado · ya puedes conectar';
+  document.getElementById('googleClientId').placeholder=val.slice(0,25)+'...';
+  document.getElementById('driveClientStatus').textContent='✓ Guardado: '+val.slice(0,30)+'...';
   document.getElementById('driveClientStatus').style.color='var(--success)';
   toast('Client ID guardado ✓');
 }
