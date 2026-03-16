@@ -753,8 +753,18 @@ function setTipo(t){
 
 // ── QUICK SET ──
 function qSet(tipo,val,el){
-  if(tipo==='concepto') document.getElementById('gConcepto').value=val;
-  else document.getElementById('gJustificacion').value=val;
+  if(tipo==='concepto'){
+    const input=document.getElementById('gConcepto');
+    const actual=input.value.trim();
+    // Si ya hay texto, agregar con separador — si no, poner directamente
+    if(actual && !actual.toUpperCase().includes(val.toUpperCase())){
+      input.value=actual+' - '+val;
+    } else if(!actual){
+      input.value=val;
+    }
+  } else {
+    document.getElementById('gJustificacion').value=val;
+  }
   document.querySelectorAll(tipo==='concepto'?'.qbtn:not(.just)':'.qbtn.just').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   setTimeout(()=>el.classList.remove('active'),800);
