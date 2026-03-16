@@ -727,7 +727,7 @@ const K={
 
 // ── POLÍTICA ──
 const POL={hospedaje:1000,alimentos:450};
-const ALI=['DESAYUNO','COMIDA','CENA','ALIMENTOS','RESTAURANT','RESTAURANTE','TACOS','SUSHI','PIZZA','POLLOS','CHINA','UBER EATS','RAPPI'];
+const ALI=['DESAYUNO','COMIDA','CENA','ALIMENTOS','RESTAURANT','RESTAURANTE','TACOS','SUSHI','PIZZA','POLLOS','CHINA','UBER EATS','RAPPI','CAFE','CAFETERIA','CAFETERÍA','LONCHE','ALMUERZO','FONDA','TAQUERIA','TAQUERÍA','MARISCOS','TORTAS','HAMBURGUESA','ANTOJITOS','COCINA','BIRRIA','BARBACOA','CARNITAS','BUFFET','SANDWICH','SÁNDWICH'];
 const HOS=['HOTEL','HOSPEDAJE','MOTEL','ALOJAMIENTO','AIRBNB','TINTORERIA','TINTORERÍA'];
 function catGasto(c){const u=c.toUpperCase();if(HOS.some(k=>u.includes(k)))return'hospedaje';if(ALI.some(k=>u.includes(k)))return'alimentos';return'libre';}
 
