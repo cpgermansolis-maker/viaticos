@@ -800,19 +800,17 @@ const K={
 const POL={hospedaje:1000,alimentos:450};
 const ALI=['DESAYUNO','COMIDA','CENA','ALIMENTOS','RESTAURANT','RESTAURANTE','TACOS','SUSHI','PIZZA','POLLOS','CHINA','UBER EATS','RAPPI','CAFE','CAFETERIA','CAFETERÍA','LONCHE','ALMUERZO','FONDA','TAQUERIA','TAQUERÍA','MARISCOS','TORTAS','HAMBURGUESA','ANTOJITOS','COCINA','BIRRIA','BARBACOA','CARNITAS','BUFFET','SANDWICH','SÁNDWICH'];
 const HOS=['HOTEL','HOSPEDAJE','MOTEL','ALOJAMIENTO','AIRBNB'];
+const TRASLADO=['UBER','TAXI','CABIFY','DIDI','LYFT','VUELO','CASETA','GASOLINA','ESTACIONAMIENTO','AUTOBUS','CAMION','METRO','TREN'];
 function catGasto(c){
   const u=c.toUpperCase().trim();
-  // Verificar si la palabra clave es el concepto PRINCIPAL
-  // (al inicio, o después de separadores como - · ,)
-  // Esto evita que "UBER - Hotel a Oficina" se clasifique como hospedaje
-  const partes = u.split(/[\s\-·,\/]+/);
-  const primero = partes[0]; // Primera palabra — es el concepto principal
-
-  // Hospedaje: solo si la primera palabra es clave de hospedaje
-  if(HOS.some(k=>primero===k||primero.startsWith(k))) return 'hospedaje';
-  // Alimentos: la primera palabra o el concepto completo contiene clave
+  const partes=u.split(/[\s\-·,\/]+/);
+  const primero=partes[0];
+  // Traslados: si la primera palabra es traslado, nunca es hospedaje ni alimentos
+  if(TRASLADO.some(k=>primero===k||primero.startsWith(k))) return 'libre';
+  // Hospedaje: cualquier parte del concepto es clave exacta de hospedaje
+  if(HOS.some(k=>partes.some(p=>p===k))) return 'hospedaje';
+  // Alimentos
   if(ALI.some(k=>primero===k||primero.startsWith(k)||u.startsWith(k))) return 'alimentos';
-  // Fallback: buscar en todo el texto solo para alimentos (restaurantes con nombre propio)
   if(ALI.some(k=>u.includes(k))) return 'alimentos';
   return 'libre';
 }
