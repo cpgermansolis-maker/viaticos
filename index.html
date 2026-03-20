@@ -590,13 +590,9 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
           <div class="setting-row">
             <div class="setting-icon green">🔗</div>
             <div class="setting-info">
-              <div class="setting-label">Google Client ID</div>
-              <div class="setting-sub" id="driveClientStatus">Sin configurar</div>
+              <div class="setting-label">Google Drive</div>
+              <div class="setting-sub" id="driveClientStatus" style="color:var(--success)">✓ Configurado automáticamente</div>
             </div>
-          </div>
-          <div class="config-input" style="margin-top:8px">
-            <input type="text" id="googleClientId" placeholder="XXXXX.apps.googleusercontent.com">
-            <button class="config-save" onclick="saveGoogleClientId()">Guardar</button>
           </div>
           <div class="field-note" style="margin-top:6px">La sesión se sincroniza automáticamente entre cel y compu</div>
           <div style="margin-top:10px;display:flex;gap:8px;">
@@ -785,6 +781,9 @@ let tipoActivo='sin', gastos=[], archivosGasto=[], rangoActivo=false;
 let driveConnected=false, driveToken=null, driveFolderId=null, driveFileId=null;
 
 // ── STORAGE KEYS ──
+// ── GOOGLE CLIENT ID (fijo en la app) ──
+const GOOGLE_CLIENT_ID = '396261609153-3f09aktcve1a5e9c8htp9pk3dgqe8grs.apps.googleusercontent.com';
+
 const K={
   session:'ftad02_v2_session',
   consecutivo:'ftad02_consecutivo',
@@ -1299,7 +1298,7 @@ const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const DRIVE_FOLDER='FTAD02_Viaticos';
 const DRIVE_FILE='ftad02_session.json';
 
-function getClientId(){return localStorage.getItem(K.googleClientId)||'';}
+function getClientId(){ return GOOGLE_CLIENT_ID; }
 
 function conectarDrive(){
   const clientId=getClientId();
@@ -1540,22 +1539,6 @@ function saveAnthropicKey(){
   document.getElementById('anthropicStatus').style.color='var(--success)';
   toast('API Key guardada ✓');
 }
-function saveGoogleClientId(){
-  const raw=document.getElementById('googleClientId').value;
-  // Limpiar espacios, saltos de línea y caracteres invisibles
-  const val=raw.replace(/\s+/g,'').trim();
-  if(!val){toast('Pega tu Client ID primero');return;}
-  if(!val.includes('.apps.googleusercontent.com')){
-    toast('⚠ Client ID inválido — debe terminar en .apps.googleusercontent.com');
-    return;
-  }
-  localStorage.setItem(K.googleClientId,val);
-  document.getElementById('googleClientId').value='';
-  document.getElementById('googleClientId').placeholder=val.slice(0,25)+'...';
-  document.getElementById('driveClientStatus').textContent='✓ Guardado: '+val.slice(0,30)+'...';
-  document.getElementById('driveClientStatus').style.color='var(--success)';
-  toast('Client ID guardado ✓');
-}
 function initSettingsStatus(){
   const ak=localStorage.getItem(K.anthropicKey);
   if(ak){
@@ -1563,13 +1546,7 @@ function initSettingsStatus(){
     document.getElementById('anthropicStatus').style.color='var(--success)';
     document.getElementById('anthropicKey').placeholder='••••••••'+ak.slice(-8);
   }
-  const gk=localStorage.getItem(K.googleClientId);
-  if(gk){
-    document.getElementById('driveClientStatus').textContent='✓ Client ID guardado';
-    document.getElementById('driveClientStatus').style.color='var(--success)';
-    document.getElementById('googleClientId').placeholder=gk.slice(0,20)+'...';
-  }
-  // Drive connection status shown in driveConnectStatus
+  // Drive connection status
   const token=localStorage.getItem(K.driveToken);
   const statusEl=document.getElementById('driveConnectStatus');
   if(token){
