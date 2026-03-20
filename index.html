@@ -1094,6 +1094,8 @@ function completarGasto(fecha,fechaFin,importe,concepto,ajustePolitica=false){
   };
   if(editId){const i=gastos.findIndex(x=>x.id===parseInt(editId));if(i>=0)gastos[i]=g;else gastos.push(g);}
   else gastos.push(g);
+  // Ordenar cronológicamente por fecha
+  gastos.sort((a,b)=>a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0);
   // Reset btn if editing
   if(editId){document.getElementById('btnAgregar').dataset.editId='';setTipo(tipoActivo);}
   limpiarFormGasto(fecha,fechaFin);
