@@ -1757,11 +1757,9 @@ async function generarPDF(){
         const archivosImagen = gasto.archivos.filter(a=>a.data&&(a.type?.startsWith('image/')||a.isPDFRendered));
 
         if(esParaVale){
-          // Vale azul en su lugar en el orden
-          if(y>200){doc.addPage();y=M;}
-          dibujarVale(doc,gasto,y,W,M,sf,rct,ln,C);
-          y+=124;
-          if(y<235) ln(M,y-4,W-M,y-4,[200,197,190],0.3);
+          // Vale azul — página completa propia
+          doc.addPage();
+          dibujarVale(doc,gasto,M+20,W,M,sf,rct,ln,C);
         } else if(archivosImagen.length>0){
           // Comprobantes del gasto
           for(const arch of archivosImagen){
