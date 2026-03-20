@@ -844,8 +844,9 @@ function qSet(tipo,val,el){
   if(tipo==='concepto'){
     const input=document.getElementById('gConcepto');
     const actual=input.value.trim();
-    // Si ya hay texto, agregar con separador — si no, poner directamente
-    if(actual && !actual.toUpperCase().includes(val.toUpperCase())){
+    // Verificar si ya contiene la palabra exacta (no parcial)
+    const regex=new RegExp('\\b'+val+'\\b','i');
+    if(actual && !regex.test(actual)){
       input.value=actual+' - '+val;
     } else if(!actual){
       input.value=val;
