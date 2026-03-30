@@ -275,7 +275,7 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
 .img-close{position:absolute;top:16px;right:16px;width:36px;height:36px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
 /* ── TOAST ── */
-#toast{position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-family:var(--mono);z-index:400;transition:transform 0.3s ease;white-space:nowrap;}
+#toast{position:fixed;bottom:calc(var(--nav-h) + 24px);left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-family:var(--mono);z-index:400;transition:transform 0.3s ease;white-space:nowrap;pointer-events:none;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 
 /* ── DRIVE SYNC INDICATOR ── */
@@ -1824,7 +1824,13 @@ async function generarPDF(){
 function fmt(n){return'$'+(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fFecha(s){if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
 function toLetras(n){const e=Math.floor(n);const c=Math.round((n-e)*100);return e+' PESOS'+(c>0?' '+c+'/100':' 00/100')+' M.N.';}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+let _toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{t.classList.remove('show');_toastTimer=null;},2000);
+}
 
 // ── FACTURADOR ──
 // Base de datos de portales conocidos
