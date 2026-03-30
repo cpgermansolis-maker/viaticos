@@ -2457,13 +2457,67 @@ async function subirTicketDrive(ticket) {
 // Sincronizar pendientes desde Drive
 async function sincronizarPendientes() {
   if (!driveToken) { toast('Conecta Drive primero'); return; }
-  toast('Sincronizando pendientes…');
-  // Re-subir los que no se subieron
-  for (const t of pendientes.filter(p => !p.subido)) {
-    await subirTicketDrive(t);
+  toast('Recuperando tickets desde Drive…');
+  try {
+    // Buscar carpeta de pendientes
+    let pendFolderId = localStorage.getItem('ftad02_pending_folder') || '';
+    if (!pendFolderId) {
+      const r = await gdriveReq('GET', `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${PENDING_FOLDER}' and '${driveFolderId}' in parents and trashed=false`)}&fields=files(id,name)`);
+      if (r?.files?.length > 0) {
+        pendFolderId = r.files[0].id;
+        localStorage.setItem('ftad02_pending_folder', pendFolderId);
+      }
+    }
+    if (!pendFolderId) { toast('No hay carpeta de pendientes en Drive'); return; }
+
+    // Listar imágenes en la carpeta
+    const archivos = await gdriveReq('GET', `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${pendFolderId}' in parents and trashed=false and mimeType contains 'image/'`)}&fields=files(id,name,createdTime)&orderBy=createdTime`);
+    if (!archivos?.files?.length) { toast('No hay tickets en Drive'); return; }
+
+    // IDs ya en local para no duplicar
+    const idsLocales = new Set(pendientes.map(p => String(p.id)));
+    let recuperados = 0;
+
+    for (const archivo of archivos.files) {
+      // Extraer ID del nombre: ticket_1234567890.jpg
+      const match = archivo.name.match(/ticket_(\d+)/);
+      const id = match ? parseInt(match[1]) : Date.now();
+      if (idsLocales.has(String(id))) continue;
+
+      // Descargar imagen desde Drive
+      try {
+        const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${archivo.id}?alt=media`, {
+          headers: { 'Authorization': 'Bearer ' + driveToken }
+        });
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        const dataUrl = await new Promise(res => {
+          const reader = new FileReader();
+          reader.onload = e => res(e.target.result);
+          reader.readAsDataURL(blob);
+        });
+
+        const ticket = {
+          id, data: dataUrl, type: 'image/jpeg',
+          fecha: archivo.createdTime || new Date().toISOString(),
+          nombre: archivo.name, ai: null, subido: true
+        };
+        pendientes.push(ticket);
+        idsLocales.add(String(id));
+        recuperados++;
+
+        // Leer con IA en segundo plano
+        leerTicketPendiente(ticket);
+      } catch {}
+    }
+
+    savePendientes();
+    updateFabBadge();
+    renderPendientes();
+    toast(`✓ ${recuperados} ticket(s) recuperado(s) desde Drive`);
+  } catch(e) {
+    toast('Error al recuperar: ' + e.message.slice(0,30));
   }
-  renderPendientes();
-  toast('Sincronización completa ✓');
 }
 
 // Render lista de pendientes
