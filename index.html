@@ -1836,15 +1836,17 @@ function toast(msg){
 // Base de datos de portales conocidos
 const PORTALES = {
   'OXXO': {
-    portal: 'https://www.oxxo.com/facturacion',
-    campos: ['Número de tienda (en el ticket)', 'Folio de venta (Fol_Vta)', 'Fecha de compra'],
-    plazo: '60 días naturales',
-    nota: 'Tienes hasta 60 días para facturar. Necesitas el folio de venta que aparece en el ticket.',
+    portal: 'https://negocios2.buzonfiscal.com/comun/html/oxxo/guia/inicio.html',
+    alias: ['CADENA COMERCIAL OXXO', 'OXXO GAS', 'OXXO EXPRESS'],
+    campos: ['Fecha de venta', 'Folio de venta (Fol_Vta)', 'ID de venta', 'Total con centavos'],
+    plazo: '60 días · espera mínimo 24hrs después de la compra',
+    nota: '⚠ Necesitas 4 datos específicos del ticket: Fecha, Folio (Fol_Vta), ID de venta y Total exacto.',
     pasos: [
-      'Abre el portal y da clic en "Generar factura"',
-      'Ingresa el número de tienda y folio de venta del ticket',
-      'Captura tu RFC y datos fiscales (nombre, domicilio)',
-      'Verifica los datos y descarga el PDF y XML'
+      '🧾 Del ticket identifica: Fecha · Folio de venta (Fol_Vta) · ID de venta · Total exacto con centavos',
+      '🌐 Abre el portal y da clic en "Generar factura"',
+      '🔢 Ingresa los 4 datos del ticket',
+      '🏢 Captura: RFC · Razón social · Régimen fiscal · CP fiscal · Uso CFDI',
+      '📧 Ingresa tu correo y da clic en "Generar" · Descarga PDF y XML'
     ]
   },
   'UBER': {
@@ -2037,8 +2039,13 @@ function detectarPortal(negocio) {
   // Buscar en built-in
   if(!fPortalActual){
     for(const key of Object.keys(PORTALES)){
-      if(u.includes(key)||key.includes(u.split(' ')[0])){
-        fPortalActual={...PORTALES[key],nombre:key}; break;
+      const p = PORTALES[key];
+      // Verificar nombre principal
+      const matchPrincipal = u.includes(key) || key.includes(u.split(' ')[0]);
+      // Verificar aliases
+      const matchAlias = p.alias?.some(a => u.includes(a) || a.includes(u));
+      if(matchPrincipal || matchAlias){
+        fPortalActual={...p, nombre:key}; break;
       }
     }
   }
