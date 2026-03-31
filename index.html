@@ -1989,14 +1989,20 @@ async function leerTicketIA(data, mime) {
   "fecha": "YYYY-MM-DD o null",
   "monto": "total final sin $ ni comas o null",
   "folio": "numero de ticket/folio o null",
+  "fol_vta": "Fol_Vta o folio de venta corto numerico si aparece, o null",
+  "id_venta": "ID de venta alfanumerico si aparece (diferente al folio), o null",
+  "rfc_emisor": "RFC del emisor que aparece en el encabezado del ticket, o null",
   "portal": "URL del portal de facturacion si aparece en el ticket, o null",
-  "datos_facturacion": ["lista de datos que pide el ticket para facturar, exactamente como aparecen en el ticket"]
+  "datos_facturacion": ["lista de datos que pide el ticket para facturar, exactamente como aparecen"]
 }
 
 Instrucciones:
-- En "portal": si el ticket menciona una URL o sitio web para facturar, ponla aqui. Ejemplo: "facturaelectronica.sanborns.com.mx"
-- En "datos_facturacion": lista TODOS los datos que el ticket dice que necesitas para facturar. Por ejemplo: ["No. de Ticket", "Fecha", "Total", "RFC", "Correo electronico"]
-- Si el ticket no menciona facturacion, pon datos_facturacion como lista vacia []` }
+- "folio": numero principal del ticket
+- "fol_vta": busca especificamente "Fol_Vta:" o "Folio de venta" — es un numero corto
+- "id_venta": busca "ID:" o "ID de venta" — suele ser alfanumerico como TOVHT50UVE1
+- "rfc_emisor": el RFC en el encabezado del ticket, ej. CCO860523-1N4
+- "portal": si el ticket menciona URL para facturar, ponla aqui
+- "datos_facturacion": lista TODOS los datos que el ticket dice necesitar para facturar` }
         ]}]
       })
     });
@@ -2006,14 +2012,37 @@ Instrucciones:
       mostrarDatosCard(); return;
     }
     const txt = d.content?.[0]?.text?.trim() || '{}';
-    let r = { negocio: '', fecha: '', monto: '', folio: '', portal: null, datos_facturacion: [] };
+    let r = { negocio: '', fecha: '', monto: '', folio: '', fol_vta: null, id_venta: null, rfc_emisor: null, portal: null, datos_facturacion: [] };
     try { const m = txt.match(/\{[\s\S]*\}/); r = { ...r, ...JSON.parse(m ? m[0] : txt) }; } catch {}
 
     // Llenar campos básicos
     if (r.negocio) document.getElementById('fNegocio').value = r.negocio;
     if (r.fecha) document.getElementById('fFecha').value = r.fecha;
     if (r.monto) document.getElementById('fMonto').value = r.monto;
-    if (r.folio) document.getElementById('fTicketNum').value = r.folio;
+    // Folio: preferir fol_vta si existe, si no usar folio
+    if (r.fol_vta) document.getElementById('fTicketNum').value = r.fol_vta;
+    else if (r.folio) document.getElementById('fTicketNum').value = r.folio;
+    // ID de venta — guardar en variable para usarlo en pasos
+    if (r.id_venta) document.getElementById('fTicketNum').title = r.id_venta;
+    // RFC emisor — prellenar campo de gastos también
+    if (r.rfc_emisor) {
+      const fRfc = document.getElementById('fRfcEmisor');
+      if (fRfc) fRfc.value = r.rfc_emisor;
+      const gRfc = document.getElementById('gRFC');
+      if (gRfc && !gRfc.value) gRfc.value = r.rfc_emisor;
+    }
+
+    // Agregar id_venta a datos_facturacion si existe y no está ya
+    if (r.id_venta && r.datos_facturacion) {
+      if (!r.datos_facturacion.some(d => d.toLowerCase().includes('id'))) {
+        r.datos_facturacion.unshift('ID de venta: ' + r.id_venta);
+      }
+    }
+    if (r.fol_vta && r.datos_facturacion) {
+      if (!r.datos_facturacion.some(d => d.toLowerCase().includes('fol'))) {
+        r.datos_facturacion.unshift('Fol_Vta: ' + r.fol_vta);
+      }
+    }
 
     area.innerHTML = '<div class="ai-banner" style="background:#E8F5EE;border-color:#60C090;color:#1A6640;">✓ Ticket analizado</div>';
     setTimeout(() => area.innerHTML = '', 2000);
