@@ -645,14 +645,32 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
       <div class="card" id="fDatosCard" style="display:none">
         <div class="card-header"><span style="font-size:16px">🔍</span><span class="card-title">Paso 2 — Datos detectados</span></div>
         <div class="card-body">
+          <!-- Fila 1: Negocio y RFC emisor -->
           <div class="field-row cols2">
-            <div class="field"><label>Negocio / Proveedor</label><input type="text" id="fNegocio" placeholder="Ej. OXXO, Uber Eats..."></div>
+            <div class="field"><label>Negocio / Proveedor</label><input type="text" id="fNegocio" placeholder="Ej. OXXO, Sanborns..."></div>
+            <div class="field"><label>RFC Emisor</label><input type="text" id="fRfcEmisor" placeholder="XXX000000XX0"></div>
+          </div>
+          <!-- Fila 2: Fecha y Total -->
+          <div class="field-row cols2">
             <div class="field"><label>Fecha</label><input type="date" id="fFecha"></div>
+            <div class="field"><label>Monto Total $</label><input type="number" id="fMonto" placeholder="0.00" step="0.01"></div>
           </div>
+          <!-- Fila 3: Folio y Fol_Vta -->
           <div class="field-row cols2">
-            <div class="field"><label>Monto $</label><input type="number" id="fMonto" placeholder="0.00" step="0.01"></div>
             <div class="field"><label>No. Ticket / Folio</label><input type="text" id="fTicketNum" placeholder="12345"></div>
+            <div class="field"><label>Fol_Vta</label><input type="text" id="fFolVta" placeholder="NA"></div>
           </div>
+          <!-- Fila 4: ID de venta y No. Autorización -->
+          <div class="field-row cols2">
+            <div class="field"><label>ID de Venta</label><input type="text" id="fIdVenta" placeholder="NA"></div>
+            <div class="field"><label>No. Autorización</label><input type="text" id="fNoAutorizacion" placeholder="NA"></div>
+          </div>
+          <!-- Fila 5: Portal y Plazo -->
+          <div class="field-row cols2">
+            <div class="field"><label>Portal Facturación</label><input type="text" id="fPortalUrl" placeholder="NA"></div>
+            <div class="field"><label>Plazo para facturar</label><input type="text" id="fPlazoFactura" placeholder="NA"></div>
+          </div>
+          <div style="margin-top:6px;font-size:10px;font-family:var(--mono);color:var(--text3);">Puedes editar cualquier campo antes de continuar</div>
         </div>
       </div>
 
@@ -1983,25 +2001,26 @@ async function leerTicketIA(data, mime) {
         model: 'claude-haiku-4-5-20251001', max_tokens: 600,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: tipo, data: b64 } },
-          { type: 'text', text: `Analiza este ticket de compra mexicano. Responde SOLO JSON, sin texto adicional:
+          { type: 'text', text: `Analiza este ticket de compra mexicano. Responde SOLO JSON sin texto adicional:
 {
-  "negocio": "nombre del establecimiento en MAYUSCULAS",
-  "fecha": "YYYY-MM-DD o null",
-  "monto": "total final sin $ ni comas o null",
-  "folio": "numero de ticket principal o null",
-  "fol_vta": "busca exactamente 'Fol_Vta:' en el ticket y copia el valor, o null",
-  "id_venta": "busca exactamente 'ID:' en el ticket y copia el valor alfanumerico, o null",
-  "rfc_emisor": "RFC del emisor entre parentesis en el encabezado, formato AAA000000XX0, o null",
-  "portal": "URL completa del portal de facturacion si aparece en el ticket, o null",
-  "datos_facturacion": ["datos que el ticket indica necesitar para facturar"]
+  "negocio": "nombre oficial del establecimiento en MAYUSCULAS",
+  "rfc_emisor": "RFC del emisor entre parentesis en encabezado, formato AAA000000XX0, o NA",
+  "fecha": "YYYY-MM-DD o NA",
+  "monto": "total final de la compra sin $ ni comas, o NA",
+  "folio": "numero de ticket principal o NA",
+  "fol_vta": "valor exacto despues de 'Fol_Vta:' — numero corto, o NA",
+  "id_venta": "valor exacto despues de 'ID:' — alfanumerico, o NA",
+  "no_autorizacion": "numero de autorizacion de pago con tarjeta, o NA",
+  "portal": "URL del portal de facturacion si aparece en el ticket, o NA",
+  "plazo": "plazo para facturar si aparece en el ticket ej '30 dias naturales', o NA",
+  "datos_facturacion": ["todos los datos que el ticket menciona necesitar para facturar"]
 }
 
-Reglas importantes:
-- "negocio": usa el nombre oficial del encabezado. Si ves "Cadena Comercial Oxxo" escribe "CADENA COMERCIAL OXXO". Lee con cuidado cada letra.
-- "fol_vta": SOLO el valor despues de "Fol_Vta:" — es un numero como 3032644. NO confundir con codigos de articulos.
-- "id_venta": SOLO el valor despues de "ID:" — es alfanumerico como TOVHT50UVE1
-- "rfc_emisor": esta entre parentesis en la primera linea, ej. (CCO-860523-1N4)
-- "monto": el TOTAL final de la compra, no subtotales ni IVA por separado` }
+Reglas:
+- Lee con cuidado cada letra del negocio — no inventes ni abrevies
+- fol_vta: SOLO el numero despues de 'Fol_Vta:' — NO confundir con codigos de articulos
+- id_venta: SOLO el valor despues de 'ID:' 
+- Si un campo no aparece en el ticket escribe exactamente: NA` }
         ]}]
       })
     });
@@ -2011,44 +2030,45 @@ Reglas importantes:
       mostrarDatosCard(); return;
     }
     const txt = d.content?.[0]?.text?.trim() || '{}';
-    let r = { negocio: '', fecha: '', monto: '', folio: '', fol_vta: null, id_venta: null, rfc_emisor: null, portal: null, datos_facturacion: [] };
+    let r = { negocio:'', rfc_emisor:'NA', fecha:'NA', monto:'NA', folio:'NA', fol_vta:'NA', id_venta:'NA', no_autorizacion:'NA', portal:'NA', plazo:'NA', datos_facturacion:[] };
     try { const m = txt.match(/\{[\s\S]*\}/); r = { ...r, ...JSON.parse(m ? m[0] : txt) }; } catch {}
 
-    // Llenar campos básicos
-    if (r.negocio) document.getElementById('fNegocio').value = r.negocio;
-    if (r.fecha) document.getElementById('fFecha').value = r.fecha;
-    if (r.monto) document.getElementById('fMonto').value = r.monto;
-    // Folio: preferir fol_vta si existe, si no usar folio
-    if (r.fol_vta) document.getElementById('fTicketNum').value = r.fol_vta;
-    else if (r.folio) document.getElementById('fTicketNum').value = r.folio;
-    // ID de venta — guardar en variable para usarlo en pasos
-    if (r.id_venta) document.getElementById('fTicketNum').title = r.id_venta;
-    // RFC emisor — prellenar campo de gastos también
-    if (r.rfc_emisor) {
-      const fRfc = document.getElementById('fRfcEmisor');
-      if (fRfc) fRfc.value = r.rfc_emisor;
+    // Helper para limpiar NA
+    const val = v => (!v || v === 'NA' || v === 'null') ? '' : v;
+
+    // Llenar todos los campos
+    if (val(r.negocio)) document.getElementById('fNegocio').value = r.negocio;
+    if (val(r.rfc_emisor)) document.getElementById('fRfcEmisor').value = r.rfc_emisor;
+    if (val(r.fecha)) document.getElementById('fFecha').value = r.fecha;
+    if (val(r.monto)) document.getElementById('fMonto').value = r.monto;
+    if (val(r.folio)) document.getElementById('fTicketNum').value = r.folio;
+    document.getElementById('fFolVta').value = r.fol_vta || 'NA';
+    document.getElementById('fIdVenta').value = r.id_venta || 'NA';
+    document.getElementById('fNoAutorizacion').value = r.no_autorizacion || 'NA';
+    document.getElementById('fPortalUrl').value = r.portal || 'NA';
+    document.getElementById('fPlazoFactura').value = r.plazo || 'NA';
+
+    // Si la IA encontró el portal, usarlo directamente
+    const portalDetectado = val(r.portal) ? r.portal : null;
+
+    // RFC al campo de gastos también
+    if (val(r.rfc_emisor)) {
       const gRfc = document.getElementById('gRFC');
       if (gRfc && !gRfc.value) gRfc.value = r.rfc_emisor;
     }
 
-    // Agregar id_venta a datos_facturacion si existe y no está ya
-    if (r.id_venta && r.datos_facturacion) {
-      if (!r.datos_facturacion.some(d => d.toLowerCase().includes('id'))) {
-        r.datos_facturacion.unshift('ID de venta: ' + r.id_venta);
-      }
-    }
-    if (r.fol_vta && r.datos_facturacion) {
-      if (!r.datos_facturacion.some(d => d.toLowerCase().includes('fol'))) {
-        r.datos_facturacion.unshift('Fol_Vta: ' + r.fol_vta);
-      }
-    }
+    // Construir datos_facturacion con todos los campos encontrados
+    const datosExtra = [];
+    if (val(r.fol_vta)) datosExtra.push('Fol_Vta: ' + r.fol_vta);
+    if (val(r.id_venta)) datosExtra.push('ID de venta: ' + r.id_venta);
+    const datosFinal = [...datosExtra, ...(r.datos_facturacion || [])].filter((d,i,a) => a.indexOf(d) === i);
 
     area.innerHTML = '<div class="ai-banner" style="background:#E8F5EE;border-color:#60C090;color:#1A6640;">✓ Ticket analizado</div>';
     setTimeout(() => area.innerHTML = '', 2000);
     mostrarDatosCard();
 
-    // Detectar portal — primero con lo que leyó la IA del ticket, luego en lista
-    if (r.portal || r.negocio) detectarPortal(r.negocio, r.portal, r.datos_facturacion);
+    // Detectar portal
+    if (val(r.negocio) || portalDetectado) detectarPortal(r.negocio, portalDetectado, datosFinal);
 
   } catch (e) {
     area.innerHTML = '<div class="ai-banner">⚠ Error de red</div>';
@@ -2363,11 +2383,16 @@ function limpiarFacturador() {
   document.getElementById('fTicketPreview').innerHTML = '';
   document.getElementById('fAiArea').innerHTML = '';
   document.getElementById('fNegocio').value = '';
+  document.getElementById('fRfcEmisor').value = '';
   document.getElementById('fFecha').value = '';
   document.getElementById('fMonto').value = '';
   document.getElementById('fTicketNum').value = '';
+  document.getElementById('fFolVta').value = '';
+  document.getElementById('fIdVenta').value = '';
+  document.getElementById('fNoAutorizacion').value = '';
+  document.getElementById('fPortalUrl').value = '';
+  document.getElementById('fPlazoFactura').value = '';
   document.getElementById('fFolioFact').value = '';
-  document.getElementById('fRfcEmisor').value = '';
   document.getElementById('fCfdiPreview').innerHTML = '';
   document.getElementById('fDatosCard').style.display = 'none';
   document.getElementById('fPortalCard').style.display = 'none';
