@@ -723,7 +723,10 @@ html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--t
           <div style="font-size:13px;font-weight:600;color:var(--text);">Tickets pendientes</div>
           <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:2px;">Fotos en espera de ser procesadas</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="sincronizarPendientes()">↺ Sincronizar</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="sincronizarPendientes()">↺ Sincronizar</button>
+          <button class="btn btn-sm" style="background:#FAE0D8;color:var(--danger);border:none;" onclick="vaciarCarpetaDrive()">🗑 Vaciar Drive</button>
+        </div>
       </div>
       <div id="pendientesList">
         <div class="empty-pending">
@@ -2437,7 +2440,7 @@ async function onFabCapture(input) {
   const reader = new FileReader();
   reader.onload = async e => {
     // Comprimir imagen antes de guardar
-    const compressed = await comprimirImagen(e.target.result, 800, 0.75);
+    const compressed = await comprimirImagen(e.target.result, 1600, 0.90);
     const ticket = {
       id: Date.now(),
       data: compressed,
@@ -2554,6 +2557,33 @@ async function subirTicketDrive(ticket) {
 }
 
 // Sincronizar pendientes desde Drive
+async function vaciarCarpetaDrive() {
+  if (!driveToken) { toast('Conecta Drive primero'); return; }
+  if (!confirm('¿Vaciar la carpeta de tickets en Drive? Esta acción no se puede deshacer.')) return;
+  toast('Vaciando carpeta en Drive…');
+  try {
+    const pendFolderId = localStorage.getItem('ftad02_pending_folder') || '';
+    if (!pendFolderId) { toast('No se encontró la carpeta en Drive'); return; }
+    // Listar todos los archivos
+    const r = await gdriveReq('GET', `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${pendFolderId}' in parents and trashed=false`)}&fields=files(id,name)`);
+    if (!r?.files?.length) { toast('La carpeta ya está vacía'); return; }
+    // Eliminar cada archivo
+    let eliminados = 0;
+    for (const archivo of r.files) {
+      await gdriveReq('DELETE', `https://www.googleapis.com/drive/v3/files/${archivo.id}`);
+      eliminados++;
+    }
+    // Limpiar local también
+    pendientes = [];
+    savePendientes();
+    updateFabBadge();
+    renderPendientes();
+    toast(`✓ ${eliminados} ticket(s) eliminados de Drive`);
+  } catch(e) {
+    toast('Error al vaciar: ' + e.message.slice(0,30));
+  }
+}
+
 async function sincronizarPendientes() {
   if (!driveToken) { toast('Conecta Drive primero'); return; }
   toast('Recuperando tickets desde Drive…');
