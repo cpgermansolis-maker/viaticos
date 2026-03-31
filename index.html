@@ -2004,23 +2004,23 @@ async function leerTicketIA(data, mime) {
           { type: 'text', text: `Analiza este ticket de compra mexicano. Responde SOLO JSON sin texto adicional:
 {
   "negocio": "nombre oficial del establecimiento en MAYUSCULAS",
-  "rfc_emisor": "RFC del emisor entre parentesis en encabezado, formato AAA000000XX0, o NA",
+  "rfc_emisor": "RFC entre parentesis en primera linea del encabezado, ej CCO-860523-1N4, o NA",
   "fecha": "YYYY-MM-DD o NA",
-  "monto": "total final de la compra sin $ ni comas, o NA",
-  "folio": "numero de ticket principal o NA",
-  "fol_vta": "valor exacto despues de 'Fol_Vta:' — numero corto, o NA",
-  "id_venta": "valor exacto despues de 'ID:' — alfanumerico, o NA",
-  "no_autorizacion": "numero de autorizacion de pago con tarjeta, o NA",
-  "portal": "URL del portal de facturacion si aparece en el ticket, o NA",
-  "plazo": "plazo para facturar si aparece en el ticket ej '30 dias naturales', o NA",
-  "datos_facturacion": ["todos los datos que el ticket menciona necesitar para facturar"]
+  "monto": "numero despues de 'Total: $' o 'TOTAL M.N. $', sin signos, o NA",
+  "folio": "NA",
+  "fol_vta": "numero en la linea que dice exactamente 'Fol_Vta:XXXXXXX' — es un numero de 7 digitos, o NA",
+  "id_venta": "codigo en la linea que dice exactamente 'ID=XXXXXXX' — alfanumerico como TOVHT50UVE1, o NA",
+  "no_autorizacion": "numero en linea que dice 'AUT:' o 'AUTORIZACION', o NA",
+  "portal": "URL que empiece con http o www para facturacion — NO correos electronicos, o NA",
+  "plazo": "texto sobre dias para facturar si aparece, o NA",
+  "datos_facturacion": ["datos mencionados en el ticket para tramitar factura"]
 }
 
-Reglas:
-- Lee con cuidado cada letra del negocio — no inventes ni abrevies
-- fol_vta: SOLO el numero despues de 'Fol_Vta:' — NO confundir con codigos de articulos
-- id_venta: SOLO el valor despues de 'ID:' 
-- Si un campo no aparece en el ticket escribe exactamente: NA` }
+CRITICO — errores comunes a evitar:
+- fol_vta: la linea 'Fol_Vta:3032644' — copia SOLO el numero 3032644
+- id_venta: la linea 'ID=TOVHT50UVE1' — copia SOLO TOVHT50UVE1
+- NO uses: codigos de articulos, AID de tarjeta, ARQC, TVR como folio o ID
+- portal: NUNCA pongas un correo email como portal, solo URLs web` }
         ]}]
       })
     });
