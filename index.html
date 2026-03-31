@@ -1635,7 +1635,7 @@ async function generarPDF(){
     ].forEach(([l1,v1,l2,v2])=>{sf(6.5,'bold',C.GRAY);doc.text(l1.toUpperCase(),M,y);doc.text(l2.toUpperCase(),W/2+1,y);sf(8,'normal',C.INK);doc.text(v1,M,y+4);doc.text(v2,W/2+1,y+4);y+=10;});
     // Motivo
     sf(6.5,'bold',C.GRAY);doc.text('MOTIVO',M,y);y+=4;
-    const mot=doc.splitTextToSize(document.getElementById('motivo').value||'—',W-M*2);sf(8,'normal',C.INK);doc.text(mot,M,y);y+=mot.length*4+4;
+    const mot=doc.splitTextToSize(document.getElementById('motivo').value||'—',W-M*2);sf(8,'normal',C.INK);doc.text(mot,M,y);y+=mot.length*5+4;
     // Importe entregado
     rct(M,y,W-M*2,10,[230,245,235]);sf(7,'bold',C.GRAY);doc.text('IMPORTE ENTREGADO PARA VIÁTICOS:',M+2,y+4.5);sf(9,'bold',[35,122,75]);doc.text(fmt(entregado),W-M-2,y+4.5,{align:'right'});y+=14;
     // Tabla
@@ -1646,9 +1646,10 @@ async function generarPDF(){
     doc.text('IMPORTE',W-M-2,y+4,{align:'right'});y+=6;
     gastosT.forEach((g,i)=>{
       const tieneRango=g.fechaFin&&g.fechaFin!==g.fecha;
-      const folioLargo=tipo==='con'&&g.factura&&g.factura.length>10;
-      // Altura: rango=11, folio largo=11, rango+folioLargo=14, normal=6.5
-      const rowH=tieneRango&&folioLargo?14:tieneRango||folioLargo?11:6.5;
+      const folioLargo=tipo==='con'&&g.factura&&g.factura.length>12;
+      // Altura: ajuste política necesita más espacio
+      const extraRow=g.ajustePolitica?4:0;
+      const rowH=(tieneRango&&folioLargo?14:tieneRango||folioLargo?11:6.5)+extraRow;
       if(y>260){doc.addPage();y=M;}
       if(i%2===0)rct(M,y,W-M*2,rowH,tipo==='sin'?[250,248,244]:[244,247,252]);
       sf(7.5,'normal',C.INK);doc.text(String(i+1),M+3,y+rowH/2);
@@ -1656,21 +1657,23 @@ async function generarPDF(){
       if(tieneRango){sf(7,'bold',C.INK);doc.text(fFecha(g.fecha),M+10,y+3.5);sf(6.5,'normal',[80,80,80]);doc.text('al '+fFecha(g.fechaFin),M+10,y+8);sf(7.5,'normal',C.INK);}
       else{doc.text(fFecha(g.fecha),M+10,y+rowH/2);}
       // Concepto
-      doc.text(doc.splitTextToSize(g.concepto,60)[0],M+32,y+rowH/2);
-      // Ajuste política — nota debajo del concepto si aplica
+      const conceptoY = g.ajustePolitica ? y+4 : y+rowH/2;
+      doc.text(doc.splitTextToSize(g.concepto,60)[0],M+32,conceptoY);
+      // Ajuste política — sin emoji, solo texto
       if(g.ajustePolitica){
         sf(6,'italic',[200,75,47]);
-        doc.text('⚠ Ajustado a '+fmt(g.importe)+' por política',M+32,y+rowH-1.5);
+        doc.text('* Ajustado a '+fmt(g.importe)+' por politica',M+32,conceptoY+4.5);
         sf(7.5,'normal',C.INK);
       }
       if(tipo==='sin'){
         doc.text(doc.splitTextToSize(g.justificacion||'—',50)[0],M+105,y+rowH/2);
       } else {
         if(folioLargo){
-          // Folio en dos líneas
-          sf(6.5,'normal',C.INK);
-          doc.text(g.factura,M+95,y+3.5);
-          doc.text(g.rfc||'—',M+95,y+8);
+          // Folio largo: truncar a 18 chars en primera línea, RFC debajo
+          sf(6,'normal',C.INK);
+          doc.text((g.factura||'').slice(0,20),M+95,y+3.5);
+          doc.text((g.factura||'').slice(20,38)||'',M+95,y+7.5);
+          doc.text(g.rfc||'—',M+95,y+(g.factura.length>20?11.5:8));
           sf(7.5,'normal',C.INK);
         } else {
           doc.text(g.factura||'—',M+95,y+rowH/2);
@@ -1743,20 +1746,9 @@ async function generarPDF(){
             try{
               const imgEl=new Image();
               await new Promise((res,rej)=>{imgEl.onload=res;imgEl.onerror=rej;imgEl.src=arch.data;});
-              const nW=imgEl.naturalWidth,nH=imgEl.naturalHeight;
 
-              // SIEMPRE orientar vertical — rotar si es horizontal
-              let imgData=arch.data;
-              if(nW>nH){
-                // Rotar 90° para que quede vertical
-                const cv=document.createElement('canvas');
-                cv.width=nH; cv.height=nW;
-                const ctx=cv.getContext('2d');
-                ctx.translate(nH/2,nW/2);
-                ctx.rotate(Math.PI/2);
-                ctx.drawImage(imgEl,-nW/2,-nH/2);
-                imgData=cv.toDataURL('image/jpeg',0.9);
-              }
+              // No rotar — el usuario sube los tickets en orientación correcta
+              const imgData=arch.data;
 
               doc.addPage();
               const bg=gasto.tipo==='sin'?C.SIN:C.CON;
@@ -1836,17 +1828,17 @@ function toast(msg){
 // Base de datos de portales conocidos
 const PORTALES = {
   'OXXO': {
-    portal: 'https://negocios2.buzonfiscal.com/comun/html/oxxo/guia/inicio.html',
+    portal: 'https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do',
     alias: ['CADENA COMERCIAL OXXO', 'OXXO GAS', 'OXXO EXPRESS'],
     campos: ['Fecha de venta', 'Folio de venta (Fol_Vta)', 'ID de venta', 'Total con centavos'],
     plazo: '60 días · espera mínimo 24hrs después de la compra',
-    nota: '⚠ Necesitas 4 datos específicos del ticket: Fecha, Folio (Fol_Vta), ID de venta y Total exacto.',
+    nota: 'Necesitas 4 datos específicos del ticket: Fecha, Folio (Fol_Vta), ID de venta y Total exacto.',
     pasos: [
-      '🧾 Del ticket identifica: Fecha · Folio de venta (Fol_Vta) · ID de venta · Total exacto con centavos',
-      '🌐 Abre el portal y da clic en "Generar factura"',
-      '🔢 Ingresa los 4 datos del ticket',
-      '🏢 Captura: RFC · Razón social · Régimen fiscal · CP fiscal · Uso CFDI',
-      '📧 Ingresa tu correo y da clic en "Generar" · Descarga PDF y XML'
+      'Del ticket identifica: Fecha · Folio de venta (Fol_Vta) · ID de venta · Total exacto con centavos',
+      'Abre el portal y da clic en "Generar factura"',
+      'Ingresa los 4 datos del ticket',
+      'Captura: RFC · Razon social · Regimen fiscal · CP fiscal · Uso CFDI',
+      'Ingresa tu correo y da clic en "Generar" · Descarga PDF y XML'
     ]
   },
   'UBER': {
@@ -1978,8 +1970,7 @@ async function leerTicketIA(data, mime) {
   const area = document.getElementById('fAiArea');
   if (!apiKey) {
     area.innerHTML = '<div class="ai-banner">🔑 Configura tu API Key en ⚙ Ajustes para leer datos automáticamente</div>';
-    mostrarDatosCard();
-    return;
+    mostrarDatosCard(); return;
   }
   area.innerHTML = '<div class="ai-banner"><span class="spin">⟳</span> Analizando ticket…</div>';
   const tipo = mime && mime.startsWith('image/') ? mime : 'image/png';
@@ -1989,28 +1980,48 @@ async function leerTicketIA(data, mime) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 600,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: tipo, data: b64 } },
-          { type: 'text', text: 'Analiza este ticket de compra mexicano. Responde SOLO este JSON:\n{"negocio":"OXXO","fecha":"2026-03-02","monto":"85.00","folio":"10VHT"}\n- negocio: nombre del establecimiento en MAYÚSCULAS\n- fecha: formato YYYY-MM-DD\n- monto: total final sin $ ni comas\n- folio: número de ticket o folio de venta. null si no existe.' }
+          { type: 'text', text: `Analiza este ticket de compra mexicano. Responde SOLO JSON, sin texto adicional:
+{
+  "negocio": "nombre del establecimiento en MAYUSCULAS",
+  "fecha": "YYYY-MM-DD o null",
+  "monto": "total final sin $ ni comas o null",
+  "folio": "numero de ticket/folio o null",
+  "portal": "URL del portal de facturacion si aparece en el ticket, o null",
+  "datos_facturacion": ["lista de datos que pide el ticket para facturar, exactamente como aparecen en el ticket"]
+}
+
+Instrucciones:
+- En "portal": si el ticket menciona una URL o sitio web para facturar, ponla aqui. Ejemplo: "facturaelectronica.sanborns.com.mx"
+- En "datos_facturacion": lista TODOS los datos que el ticket dice que necesitas para facturar. Por ejemplo: ["No. de Ticket", "Fecha", "Total", "RFC", "Correo electronico"]
+- Si el ticket no menciona facturacion, pon datos_facturacion como lista vacia []` }
         ]}]
       })
     });
     const d = await res.json();
-    if (d.error) { area.innerHTML = '<div class="ai-banner">⚠ ' + (d.error.type === 'authentication_error' ? 'API Key incorrecta' : 'Error IA') + '</div>'; mostrarDatosCard(); return; }
+    if (d.error) {
+      area.innerHTML = '<div class="ai-banner">⚠ ' + (d.error.type === 'authentication_error' ? 'API Key incorrecta' : 'Error IA') + '</div>';
+      mostrarDatosCard(); return;
+    }
     const txt = d.content?.[0]?.text?.trim() || '{}';
-    let r = { negocio: '', fecha: '', monto: '', folio: '' };
+    let r = { negocio: '', fecha: '', monto: '', folio: '', portal: null, datos_facturacion: [] };
     try { const m = txt.match(/\{[\s\S]*\}/); r = { ...r, ...JSON.parse(m ? m[0] : txt) }; } catch {}
-    // Llenar campos
+
+    // Llenar campos básicos
     if (r.negocio) document.getElementById('fNegocio').value = r.negocio;
     if (r.fecha) document.getElementById('fFecha').value = r.fecha;
     if (r.monto) document.getElementById('fMonto').value = r.monto;
     if (r.folio) document.getElementById('fTicketNum').value = r.folio;
-    area.innerHTML = '<div class="ai-banner" style="background:#E8F5EE;border-color:#60C090;color:#1A6640;">✨ Datos leídos automáticamente</div>';
-    setTimeout(() => area.innerHTML = '', 2500);
+
+    area.innerHTML = '<div class="ai-banner" style="background:#E8F5EE;border-color:#60C090;color:#1A6640;">✓ Ticket analizado</div>';
+    setTimeout(() => area.innerHTML = '', 2000);
     mostrarDatosCard();
-    // Detectar portal
-    if (r.negocio) detectarPortal(r.negocio);
+
+    // Detectar portal — primero con lo que leyó la IA del ticket, luego en lista
+    if (r.portal || r.negocio) detectarPortal(r.negocio, r.portal, r.datos_facturacion);
+
   } catch (e) {
     area.innerHTML = '<div class="ai-banner">⚠ Error de red</div>';
     setTimeout(() => area.innerHTML = '', 3000);
@@ -2024,9 +2035,8 @@ function mostrarDatosCard() {
   document.getElementById('fAccionesCard').style.display = '';
 }
 
-function detectarPortal(negocio) {
+function detectarPortal(negocio, portalUrl=null, datosFacturacion=[]) {
   if(!negocio) return;
-  // Siempre limpiar portal anterior
   fPortalActual = null;
   document.getElementById('fPortalCard').style.display = 'none';
   document.getElementById('fGuia').style.display = 'none';
@@ -2034,31 +2044,53 @@ function detectarPortal(negocio) {
 
   const u = negocio.toUpperCase();
   const guardados = getPortalesGuardados();
-  // Buscar en guardados primero (coincidencia exacta)
+
+  // 1. Buscar en lista fija (alias incluidos)
   if(guardados[u]){ fPortalActual={...guardados[u],nombre:u}; }
-  // Buscar en built-in
   if(!fPortalActual){
     for(const key of Object.keys(PORTALES)){
       const p = PORTALES[key];
-      // Verificar nombre principal
       const matchPrincipal = u.includes(key) || key.includes(u.split(' ')[0]);
-      // Verificar aliases
       const matchAlias = p.alias?.some(a => u.includes(a) || a.includes(u));
-      if(matchPrincipal || matchAlias){
-        fPortalActual={...p, nombre:key}; break;
-      }
+      if(matchPrincipal || matchAlias){ fPortalActual={...p,nombre:key}; break; }
     }
   }
-  const card=document.getElementById('fPortalCard');
-  const info=document.getElementById('fPortalInfo');
-  if(fPortalActual){
+
+  // 2. Si la IA leyó un portal del ticket, usarlo (tiene más prioridad)
+  if(portalUrl){
+    const urlCompleta = portalUrl.startsWith('http') ? portalUrl : 'https://' + portalUrl;
+    if(fPortalActual){
+      // Actualizar URL con la del ticket
+      fPortalActual.portal = urlCompleta;
+    } else {
+      fPortalActual = { nombre: negocio, portal: urlCompleta, pasos: [], nota: '' };
+    }
+  }
+
+  // 3. Si la IA leyó datos específicos del ticket, agregarlos a los pasos
+  if(datosFacturacion && datosFacturacion.length > 0 && fPortalActual){
+    const pasoDatos = 'Del ticket necesitas: ' + datosFacturacion.join(' · ');
+    // Poner como primer paso si no está ya
+    if(!fPortalActual.pasos) fPortalActual.pasos = [];
+    if(!fPortalActual.pasos[0]?.includes('ticket')) {
+      fPortalActual.pasos = [pasoDatos, ...fPortalActual.pasos];
+    } else {
+      fPortalActual.pasos[0] = pasoDatos;
+    }
+  }
+
+  const card = document.getElementById('fPortalCard');
+  const info = document.getElementById('fPortalInfo');
+
+  if(fPortalActual && fPortalActual.portal){
     card.style.display='';
     info.innerHTML=`<div style="background:#EEF4FF;border-radius:var(--r2);padding:12px;margin-bottom:8px;">
-      <div style="font-family:var(--mono);font-size:12px;font-weight:500;color:var(--blue);margin-bottom:4px;">🌐 ${fPortalActual.nombre}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${fPortalActual.nota||''}</div>
-      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">⏱ Plazo: ${fPortalActual.plazo||'consultar'}</div>
+      <div style="font-family:var(--mono);font-size:12px;font-weight:500;color:var(--blue);margin-bottom:4px;">${fPortalActual.nombre}</div>
+      ${fPortalActual.nota?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${fPortalActual.nota}</div>`:''}
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">Portal: ${fPortalActual.portal}</div>
+      ${fPortalActual.plazo?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);">Plazo: ${fPortalActual.plazo}</div>`:''}
     </div>`;
-    if(fPortalActual.pasos){
+    if(fPortalActual.pasos && fPortalActual.pasos.length > 0){
       const guia=document.getElementById('fGuia');
       const steps=document.getElementById('fGuiaSteps');
       guia.style.display='';
@@ -2069,16 +2101,17 @@ function detectarPortal(negocio) {
         </div>`).join('');
     }
   } else {
+    // Portal no encontrado — pedir URL manual
     card.style.display='';
     info.innerHTML=`<div style="background:#FEF3D8;border-radius:var(--r2);padding:12px;margin-bottom:8px;">
-      <div style="font-family:var(--mono);font-size:11px;font-weight:500;color:#8A5A00;margin-bottom:4px;">🔍 Portal no encontrado para "${negocio}"</div>
-      <div style="font-size:11px;color:var(--text2);">Ingresa el portal de facturación y lo recordaré para siempre.</div>
+      <div style="font-family:var(--mono);font-size:11px;font-weight:500;color:#8A5A00;margin-bottom:4px;">Portal no encontrado para "${negocio}"</div>
+      <div style="font-size:11px;color:var(--text2);">Revisa tu ticket — generalmente viene impresa la URL del portal de facturacion.</div>
     </div>
     <div class="field" style="margin-top:8px;">
-      <label>URL del portal</label>
-      <input type="url" id="fPortalManual" placeholder="https://...facturacion..." style="padding:8px;border:1.5px solid var(--border);border-radius:var(--r2);font-size:13px;width:100%;outline:none;">
+      <label>URL del portal (del ticket)</label>
+      <input type="url" id="fPortalManual" placeholder="https://..." style="padding:8px;border:1.5px solid var(--border);border-radius:var(--r2);font-size:13px;width:100%;outline:none;">
     </div>
-    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="guardarPortalManual('${negocio}')">💾 Guardar portal</button>`;
+    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="guardarPortalManual('${negocio}')">Guardar portal</button>`;
     document.getElementById('fBtnPortal').style.display='none';
   }
 }
