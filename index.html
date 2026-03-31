@@ -1988,21 +1988,20 @@ async function leerTicketIA(data, mime) {
   "negocio": "nombre del establecimiento en MAYUSCULAS",
   "fecha": "YYYY-MM-DD o null",
   "monto": "total final sin $ ni comas o null",
-  "folio": "numero de ticket/folio o null",
-  "fol_vta": "Fol_Vta o folio de venta corto numerico si aparece, o null",
-  "id_venta": "ID de venta alfanumerico si aparece (diferente al folio), o null",
-  "rfc_emisor": "RFC del emisor que aparece en el encabezado del ticket, o null",
-  "portal": "URL del portal de facturacion si aparece en el ticket, o null",
-  "datos_facturacion": ["lista de datos que pide el ticket para facturar, exactamente como aparecen"]
+  "folio": "numero de ticket principal o null",
+  "fol_vta": "busca exactamente 'Fol_Vta:' en el ticket y copia el valor, o null",
+  "id_venta": "busca exactamente 'ID:' en el ticket y copia el valor alfanumerico, o null",
+  "rfc_emisor": "RFC del emisor entre parentesis en el encabezado, formato AAA000000XX0, o null",
+  "portal": "URL completa del portal de facturacion si aparece en el ticket, o null",
+  "datos_facturacion": ["datos que el ticket indica necesitar para facturar"]
 }
 
-Instrucciones:
-- "folio": numero principal del ticket
-- "fol_vta": busca especificamente "Fol_Vta:" o "Folio de venta" — es un numero corto
-- "id_venta": busca "ID:" o "ID de venta" — suele ser alfanumerico como TOVHT50UVE1
-- "rfc_emisor": el RFC en el encabezado del ticket, ej. CCO860523-1N4
-- "portal": si el ticket menciona URL para facturar, ponla aqui
-- "datos_facturacion": lista TODOS los datos que el ticket dice necesitar para facturar` }
+Reglas importantes:
+- "negocio": usa el nombre oficial del encabezado. Si ves "Cadena Comercial Oxxo" escribe "CADENA COMERCIAL OXXO". Lee con cuidado cada letra.
+- "fol_vta": SOLO el valor despues de "Fol_Vta:" — es un numero como 3032644. NO confundir con codigos de articulos.
+- "id_venta": SOLO el valor despues de "ID:" — es alfanumerico como TOVHT50UVE1
+- "rfc_emisor": esta entre parentesis en la primera linea, ej. (CCO-860523-1N4)
+- "monto": el TOTAL final de la compra, no subtotales ni IVA por separado` }
         ]}]
       })
     });
