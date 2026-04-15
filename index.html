@@ -2409,57 +2409,19 @@ function limpiarFacturador() {
   document.getElementById('fCfdiFile').value = '';
 }
 
-// Corregir orientación EXIF para que jsPDF muestre la imagen correctamente
+// Corregir orientación usando canvas — fuerza que la imagen se redibuje correctamente
 async function corregirOrientacionExif(dataUrl, imgEl) {
   try {
-    // Leer orientación EXIF del dataUrl
-    const b64 = dataUrl.split(',')[1];
-    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    let orientation = 1;
-    // Buscar marcador EXIF en JPEG
-    for (let i = 0; i < bytes.length - 1; i++) {
-      if (bytes[i] === 0xFF && bytes[i+1] === 0xE1) {
-        // Encontrar orientación en IFD
-        const exifOffset = i + 4;
-        const isLittleEndian = bytes[exifOffset + 6] === 0x49;
-        const ifdOffset = exifOffset + 6 + (isLittleEndian ?
-          bytes[exifOffset+10] | bytes[exifOffset+11]<<8 | bytes[exifOffset+12]<<16 | bytes[exifOffset+13]<<24 :
-          bytes[exifOffset+13] | bytes[exifOffset+12]<<8 | bytes[exifOffset+11]<<16 | bytes[exifOffset+10]<<24);
-        const numEntries = isLittleEndian ?
-          bytes[exifOffset+6+ifdOffset-6] | bytes[exifOffset+7+ifdOffset-6]<<8 :
-          bytes[exifOffset+7+ifdOffset-6] | bytes[exifOffset+6+ifdOffset-6]<<8;
-        for (let e = 0; e < Math.min(numEntries, 20); e++) {
-          const eOff = exifOffset + 6 + ifdOffset - 6 + 2 + e * 12;
-          const tag = isLittleEndian ? bytes[eOff] | bytes[eOff+1]<<8 : bytes[eOff+1] | bytes[eOff]<<8;
-          if (tag === 0x0112) {
-            orientation = isLittleEndian ? bytes[eOff+8] | bytes[eOff+9]<<8 : bytes[eOff+9] | bytes[eOff+8]<<8;
-            break;
-          }
-        }
-        break;
-      }
-    }
-    // Si orientación es 1 o no se encontró, no hay que rotar
-    if (orientation <= 1) return dataUrl;
-    // Aplicar rotación según orientación EXIF
+    const w = imgEl.naturalWidth;
+    const h = imgEl.naturalHeight;
     const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
-    const w = imgEl.naturalWidth, h = imgEl.naturalHeight;
-    if (orientation >= 5) { canvas.width = h; canvas.height = w; }
-    else { canvas.width = w; canvas.height = h; }
-    switch(orientation) {
-      case 2: ctx.transform(-1,0,0,1,w,0); break;
-      case 3: ctx.transform(-1,0,0,-1,w,h); break;
-      case 4: ctx.transform(1,0,0,-1,0,h); break;
-      case 5: ctx.transform(0,1,1,0,0,0); break;
-      case 6: ctx.transform(0,1,-1,0,h,0); break;
-      case 7: ctx.transform(0,-1,-1,0,h,w); break;
-      case 8: ctx.transform(0,-1,1,0,0,w); break;
-    }
-    ctx.drawImage(imgEl, 0, 0);
-    return canvas.toDataURL('image/jpeg', 0.9);
+    ctx.drawImage(imgEl, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.92);
   } catch {
-    return dataUrl; // Si falla, usar imagen original
+    return dataUrl;
   }
 }
 
